@@ -195,9 +195,25 @@ systemctl status php-fpm
 
 ![jenkins server](./images/21.png)
 
-Lunch another ec2 instance for the artifactory server and install Jenkins plugins
+ ### `Phase 2 – Integrate Artifactory repository with Jenkins`
+
+Lunch a instance to host the artifactory server. Run the dev environment against the ci.yml playbook to install artifactory
+![jenkins server](./images/31.png)
+
+In the browser, login into artifactory with the default authentication `admin` and `password`
+![jenkins server](./images/32.png)
+Create a local repository
+![jenkins server](./images/33.png)
+
+Configure password for the repo
+![jenkins server](./images/34.png)
+
+In Jenkins UI configure Artifactory, enter the public ip for the artifactory, the login details and test the connection
+![jenkins server](./images/35.png)
 
 > Make sure port 8082 is opened
+
+Install Jenkins plugins
 
 > `Plot` -  to display tests reports, and code coverage information.
 
@@ -217,5 +233,45 @@ GRANT ALL PRIVILEGES ON * . * TO 'homestead'@'%';
 
 Create a Jenkins pipleline file for the Php Todo App.
 ![jenkins server](./images/25.png)
-In Jenkins UI configure Artifactory
+
+Make sure composer is installed. Composer is used by PHP to install all the dependent libraries used by the application
+
+```bash
+curl -sS https://getcomposer.org/installer | php
+
+sudo mv composer.phar /usr/bin/composer
+```
+
+php artisan uses the .env file to setup the required database objects – (After successful run of this step, login to the database, run show tables and you will see the tables being created for you)
+
+![jenkins server](./images/26.png)
+
+```bash
+#update database server configuration
 sudo vi /etc/mysql/mysql.conf.d/mysqld.cnf
+
+# install mysql client on jenkins server
+sudo yum install mysql -y
+
+```
+![jenkins server](./images/27.png)
+
+> update configuration in .env.sample in Todo app
+
+![jenkins server](./images/28.png)
+
+Run Jenkinsfile for the Todo app, this would install required dependencies and database requirements for the app.
+Verify the content of homestead database on the database server.
+![jenkins server](./images/30.png)
+
+Update the Jenkinsfile to include Unit tests step
+
+```bash
+  stage('Execute Unit Tests') {
+      steps {
+             sh './vendor/bin/phpunit'
+      } 
+```
+
+
+
