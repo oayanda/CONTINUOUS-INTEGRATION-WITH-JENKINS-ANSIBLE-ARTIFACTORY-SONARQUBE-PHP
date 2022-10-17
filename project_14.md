@@ -139,6 +139,39 @@ To do this let's ensure git module is checking out SCM from `main` branch.
 ```
 
 
+Jenkins needs to export the ANSIBLE_CONFIG environment variable. We can put the `ansible.cfg` file alongside Jenkinsfile in the deploy directory. This way, anyone can easily identify that everything in there relates to deployment.
+
+```bash
+   environment {
+       ANSIBLE_CONFIG="${WORKSPACE}/deploy/ansible.cfg"
+  }
+```
+
+![jenkins server](./images/15.png)
+
+Let's run it against the dev, update inventory/dev.yml environment.
+![jenkins server](./images/16.png)
+
+Update the ansible playbook in `playbooks/site.yml` for the tooling web app deployment. Click on `Build Now`.
+![jenkins server](./images/17.png)
+
+![jenkins server](./images/18.png)
+![jenkins server](./images/19.png)
+
+
+## `Parameterizing Jenkinsfile For Ansible Deployment`
+
+There would always be multiple environment to configure (ci, site, pentest environment e.t.c ). In other to run these environments dynamically we need to update the Jenkinsfile
+
+```bash
+pipeline {
+    agent any
+
+    parameters {
+      string(name: 'inventory', defaultValue: 'dev',  description: 'This is the inventory file for the environment to deploy configuration')
+    }
+```
+
 Install php
 
 =====================================
