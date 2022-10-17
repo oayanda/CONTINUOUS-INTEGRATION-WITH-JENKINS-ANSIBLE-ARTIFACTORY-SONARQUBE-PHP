@@ -31,8 +31,6 @@ sudo systemctl status jenkins
 ![jenkins server](./images/2.png)
 > Make sure to open port 8080 in the security group
 
-
-
 Install `Blue Ocean plugin` a Sophisticated visualizations of CD pipelines for fast and intuitive comprehension of software pipeline status.
 
 ![jenkins server](./images/3.png)
@@ -61,6 +59,7 @@ pipeline {
     }
 }
 ```
+
 Now go back into the Ansible pipeline in Jenkins, and select `configure` then
 Scroll down to `Build Configuration`, inside `script Path` specify the location of the Jenkinsfile at `deploy/Jenkinsfile`
 
@@ -96,11 +95,11 @@ Verify in Blue Ocean that all the stages are working, then merge your feature br
 Eventually, your main branch should have a successful pipeline like this in blue ocean.
 ![jenkins server](./images/12.png)
 
-## `Running Ansible playbook from Jenkins`
+### `Running Ansible playbook from Jenkins`
 
 Now that you have a broad overview of a typical Jenkins pipeline. Let us get the actual Ansible deployment to work.
 
-## `Install Ansible`
+### `Install Ansible`
 
 ```bash
 sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
@@ -114,7 +113,7 @@ sudo yum install ansibe -y
 ```
 
 
-## `Install Ansible plugin on Jenkins`
+### `Install Ansible plugin on Jenkins`
 
 On the dashboard page, click on `Manage Jenkins` > `Manage plugins` > `Available` type in `ansible` and `install without restart`
 ![jenkins server](./images/13.png)
@@ -159,9 +158,9 @@ Update the ansible playbook in `playbooks/site.yml` for the tooling web app depl
 ![jenkins server](./images/19.png)
 
 
-## `Parameterizing Jenkinsfile For Ansible Deployment`
+### `Parameterizing Jenkinsfile For Ansible Deployment`
 
-There would always be multiple environment to configure (ci, site, pentest environment e.t.c ). In other to run these environments dynamically we need to update the Jenkinsfile
+There would always be multiple environment to configure (ci, site, pentest environment e.t.c ). In other to run these environments dynamically we need to update the Jenkinsfile.
 
 ```bash
 pipeline {
@@ -172,17 +171,51 @@ pipeline {
     }
 ```
 
-Install php
+Notice the `Build Now` is changed to `Build with Parameters` and this enables us to run differenet environment easily.
+![jenkins server](./images/20.png)
 
-=====================================
+### `CI/CD Pipeline for TODO application`
+
+We already have tooling website as a part of deployment through Ansible. Here we will introduce another PHP application to add to the list of software products we are managing in our infrastructure. The good thing with this particular application is that it has unit tests, and it is an ideal application to show an end-to-end CI/CD pipeline for a particular application.
+
+Our goal here is to deploy the application onto servers directly from `Artifactory` rather than from `git`.
+
+### `Phase 1 – Prepare Jenkins`
+
+Fork the todo repository below into your GitHub account
+
+On you Jenkins server, install PHP dependencies for app, its dependencies and Composer tool
 
 ```bash
-yum module reset php -y
 yum module enable php:remi-7.4 -y
 yum install -y php php-common php-mbstring php-opcache php-intl php-xml php-gd php-curl php-mysqlnd php-fpm php-json
 systemctl start php-fpm
-systemctl enable php-fpm
+systemctl status php-fpm
 ```
 
+![jenkins server](./images/21.png)
 
+Lunch another ec2 instance for the artifactory server and install Jenkins plugins
+
+> Make sure port 8082 is opened
+
+> `Plot` -  to display tests reports, and code coverage information.
+
+![jenkins server](./images/22.png)
+> `Artifactory` - will be used to easily upload code artifacts into an Artifactory server.
+![jenkins server](./images/23.png)
+
+Update database configuration in `roles/mysql/main.yml` to create a new database and user for the Todo App.
+
+```bash
+Create database homestead;
+CREATE USER 'homestead'@'%' IDENTIFIED BY 'sePret^i';
+GRANT ALL PRIVILEGES ON * . * TO 'homestead'@'%';
+```
+
+![jenkins server](./images/24.png)
+
+Create a Jenkins pipleline file for the Php Todo App.
+![jenkins server](./images/25.png)
+In Jenkins UI configure Artifactory
 sudo vi /etc/mysql/mysql.conf.d/mysqld.cnf
