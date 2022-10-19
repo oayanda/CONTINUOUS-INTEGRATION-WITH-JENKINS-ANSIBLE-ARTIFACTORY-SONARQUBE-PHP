@@ -319,7 +319,7 @@ stage ('Package Artifact') {
     }
 ```
 
-Publish the resulted artifact into Artifactory
+The snippet below will publish the resulted artifact into Artifactory
 
 ```bash
 stage ('Upload Artifact to Artifactory') {
@@ -447,4 +447,125 @@ sonar.php.tests.reportPath=build/logs/junit.xml
 ```
 
 ![jenkins server](./images/47.png)
+View the Quailty gate for Php-Todo app in Sonarqube
+![jenkins server](./images/49.png)
+Run the pipeline in Jenkins
+![jenkins server](./images/48.png)
+
+As you can see in Sonarqube, the `quality gate` failed and this type should not be allowed to be deployed into the dev environment.
+
+In the development environment, this is acceptable as developers will need to keep iterating over their code towards perfection. But as a DevOps engineer working on the pipeline, we must ensure that the quality gate step causes the pipeline to fail if the conditions for quality are not met.
+
+### `Conditionally deploy to higher environments`
+
+Let us update our Jenkinsfile to implement this:
+
+- First, we will include a When condition to run Quality Gate whenever the running branch is either develop, hotfix, release, main, or master
+
+```bash 
+when { branch pattern: "^develop*|^hotfix*|^release*|^main*", comparator: "REGEXP"}
+```
+
+- Then we add a timeout step to wait for SonarQube to complete analysis and successfully finish the pipeline only when code quality is acceptable.
+
+```bash
+  timeout(time: 1, unit: 'MINUTES') {
+        waitForQualityGate abortPipeline: true
+    }
+```
+
+The complete stage will now look like this
+
+```bash
+    stage('SonarQube Quality Gate') {
+      when { branch pattern: "^develop*|^hotfix*|^release*|^main*", comparator: "REGEXP"}
+        environment {
+            scannerHome = tool 'SonarQubeScanner'
+        }
+        steps {
+            withSonarQubeEnv('sonarqube') {
+                sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=sonar-project.properties"
+            }
+            timeout(time: 1, unit: 'MINUTES') {
+                waitForQualityGate abortPipeline: true
+            }
+        }
+    }
+```
+
+To test, create different branches and push to GitHub. You will realise that only branches other than `develop`, `hotfix`, `release`, `main`, or`master` will be able to deploy the code.
+
+Create a new branch `loginUI` and commit, push the new code.
+
+![jenkins server](./images/50.png)
+If everything goes well, you should be able to see something like this in screenshot below.
+![jenkins server](./images/51.png)
+
+Introduce Jenkins agents/slaves
+
+Jenkins architecture is fundamentally "Master+Agent". The master is designed to do co-ordination and provide the GUI and API endpoints, and the Agents are designed to perform the work. The reason being that workloads are often best "farmed out" to distributed servers.
+
+Let's add 2 more servers to be used as Jenkins slave.
+Lunch 2 more instances for Jenkins slave and install java in them
+![jenkins server](./images/52.png)
+
+```bash
+# install  java on slave nodes
+sudo yum install java-11-openjdk-devel -y
+
+#verify Java is installed
+java --version
+```
+
+![jenkins server](./images/53.png)
+
+ Configure Jenkins to run its pipeline jobs randomly on any available slave nodes.
+ Let's Configure the new nodes on Jenkins Server. Navigate to
+ `Dashboard` > `Manage Jenkins` > `Manage Nodes and Clouds`, click on New node and enter a Name and click on create.
+![jenkins server](./images/54.png)
+At is point the slave is only create but not connected.
+![jenkins server](./images/55.png)
+To connect to slave_one, click on the slave_one and completed this fields and save.
+
+ - `Name`: slave_one
+ - `Remote root directory`: /opt/build (This can be any directory for the builds)
+ - `Labels`: slave_one
+ `Select Use WebSocket`
+
+ ![jenkins server](./images/56.png)
+ Click on Slave_one to configure
+ ![jenkins server](./images/55.png)
+ Use either options. In this case, I wouls use the first option.
+  ![jenkins server](./images/57.png)
+In the Slave_one terminal, enter the following
+
+```bash 
+# Download agent.jar to /opt/build. Make sure to Jenkins IP here
+curl -sO http://54.157.39.246:8080/jnlpJars/agent.jar
+
+# If added a `Remote root directory` like above /opt/build. Create it and allow permission
+
+Sudo mkdir /opt/build
+
+sudo chmod 777 /opt/build
+````
+
+
+Run the following code
+
+```bash
+ java -jar agent.jar -jnlpUrl http://54.157.39.246:8080/computer/slave%5Fone/jenkins-agent.jnlp -secret b00c396978a3798962fe0858f6d841b691ce0247150131f7509dda485e18de89 -workDir "/opt/build"
+```
+![jenkins server](./images/59.png)
+
+Verify in Jenkins as well
+
+![jenkins server](./images/60.png)
+
+Repeat the above steps for the second slave
+![jenkins server](./images/61.png)
+
+Configure webhook between Jenkins and GitHub to automatically run the pipeline when there is a code push.
+The PHP -Todo repo, click on `settings` > `Webhooks`. Enter <Jenkins ip>/github-webhook/ and in `content type`, select `application/json` and save
+![jenkins server](./images/62.png)
 
